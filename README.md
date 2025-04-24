@@ -1,5 +1,3 @@
----
-
 # 📡 WiFi Scanner Pro
 
 **WiFi Scanner Pro** is an Android application built using **Jetpack Compose** and **Room**. It scans for nearby WiFi networks, records signal strength (RSSI), and associates the data with geolocation information. Users can select predefined locations, view scan results in both list and matrix formats, and review logs of past scans.
