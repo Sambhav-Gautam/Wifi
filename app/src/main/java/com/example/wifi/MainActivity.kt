@@ -1,7 +1,10 @@
 package com.example.wifi
 
 import android.Manifest
-import android.content.*
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.location.Geocoder
 import android.net.wifi.ScanResult
@@ -13,30 +16,77 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
-import androidx.room.*
+import androidx.room.Dao
+import androidx.room.Database
+import androidx.room.Embedded
 import androidx.room.Entity
+import androidx.room.Insert
+import androidx.room.PrimaryKey
+import androidx.room.Query
+import androidx.room.Relation
+import androidx.room.Room
+import androidx.room.RoomDatabase
+import androidx.room.Transaction
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 
 class MainActivity : ComponentActivity() {
 
@@ -177,7 +227,7 @@ class MainActivity : ComponentActivity() {
                             rssiValues,
                             timestamp,
                             location.latitude,
-                            location.longitude // Fixed from `longitude`
+                            location.longitude
                         )
                     }
                 }
@@ -207,6 +257,7 @@ class MainActivity : ComponentActivity() {
                         locations = locations.value,
                         selectedLocation = selectedLocation,
                         scanResults = scanResults,
+                        dao = dao,
                         onScan = {
                             if (hasPermissions()) {
                                 isScanning = !isScanning
@@ -379,7 +430,20 @@ class MainActivity : ComponentActivity() {
 
         @Query("SELECT * FROM wifi_networks WHERE scanId = :scanId")
         suspend fun getNetworksForScan(scanId: Int): List<WiFiNetworkEntity>
+
+        @Transaction
+        @Query("SELECT * FROM scan_results ORDER BY timestamp DESC")
+        suspend fun getAllScansWithNetworks(): List<ScanWithNetworks>
     }
+
+    data class ScanWithNetworks(
+        @Embedded val scan: ScanResultEntity,
+        @Relation(
+            parentColumn = "id",
+            entityColumn = "scanId"
+        )
+        val networks: List<WiFiNetworkEntity>
+    )
 
     @Database(entities = [ScanResultEntity::class, WiFiNetworkEntity::class], version = 2)
     abstract class AppDatabase : RoomDatabase() {
@@ -448,11 +512,13 @@ class MainActivity : ComponentActivity() {
         locations: List<NamedLocation>,
         selectedLocation: MutableState<NamedLocation>,
         scanResults: List<ScanResultData>,
+        dao: ScanResultDao,
         onScan: () -> Unit,
         isScanning: Boolean,
         onRefreshLocation: () -> Unit
     ) {
         var showMatrix by remember { mutableStateOf(false) }
+        var showLogsDialog by remember { mutableStateOf(false) }
 
         Column(
             modifier = modifier
@@ -563,6 +629,26 @@ class MainActivity : ComponentActivity() {
                         style = MaterialTheme.typography.labelMedium
                     )
                 }
+                Button(
+                    onClick = { showLogsDialog = true },
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 4.dp),
+                    contentPadding = PaddingValues(vertical = 12.dp)
+                ) {
+                    Text(
+                        "View Logs",
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                }
+            }
+
+            // Logs Dialog
+            if (showLogsDialog) {
+                ViewLogsDialog(
+                    dao = dao,
+                    onDismiss = { showLogsDialog = false }
+                )
             }
 
             // Divider
@@ -584,6 +670,151 @@ class MainActivity : ComponentActivity() {
                 ) {
                     items(scanResults, key = { it.scanNumber }) { scan ->
                         ScanCard(scan)
+                    }
+                }
+            }
+        }
+    }
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    fun ViewLogsDialog(
+        dao: ScanResultDao,
+        onDismiss: () -> Unit
+    ) {
+        val scansWithNetworks = remember { mutableStateOf<List<ScanWithNetworks>>(emptyList()) }
+        LaunchedEffect(Unit) {
+            withContext(Dispatchers.IO) {
+                scansWithNetworks.value = dao.getAllScansWithNetworks()
+            }
+        }
+
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = {
+                Text(
+                    "Scan Logs",
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
+                )
+            },
+            text = {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(scansWithNetworks.value, key = { it.scan.id }) { scanWithNetworks ->
+                        LogCard(scanWithNetworks)
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = onDismiss) {
+                    Text("Close")
+                }
+            },
+            modifier = Modifier.padding(16.dp)
+        )
+    }
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    fun LogCard(scanWithNetworks: ScanWithNetworks) {
+        val scan = scanWithNetworks.scan
+        val networks = scanWithNetworks.networks
+        var expanded by remember { mutableStateOf(false) }
+        val formattedTime = remember(scan.timestamp) {
+            SimpleDateFormat("MMM dd, yyyy HH:mm:ss", Locale.getDefault()).format(Date(scan.timestamp))
+        }
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = !expanded },
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(16.dp)
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        "Scan ${scan.scanNumber} @ ${scan.location}",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                    Text(
+                        formattedTime,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "Location: ${scan.address}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+                Text(
+                    text = "Lat: ${"%.4f".format(scan.latitude)}, Long: ${"%.4f".format(scan.longitude)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        "APs: ${scan.totalAPs}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        "Avg: ${scan.avgRSSI} dBm",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        "Range: ${scan.minRSSI}–${scan.maxRSSI} dBm",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(2f)
+                    )
+                }
+                if (expanded) {
+                    Divider(
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        color = Color.Gray.copy(alpha = 0.2f)
+                    )
+                    networks.forEach { net ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Text(
+                                net.ssid.ifBlank { "<Hidden SSID>" },
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(2f)
+                            )
+                            Text(
+                                "${net.rssi} dBm",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                net.bssid,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.Gray,
+                                modifier = Modifier.weight(2f)
+                            )
+                        }
                     }
                 }
             }
