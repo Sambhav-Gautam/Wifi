@@ -1,62 +1,79 @@
-# 📡 WiFi Scanner Pro
+```
+   ____ ___ ______   ____       _            
+  / ___(___|  ___ \ / __/______| |__   ___   
+ | |      _|  ___  | |__ | ___||  _ \ / __|  
+ | |__   | | |___| |  __|| |___| | | | | 
+  \____|  |_|_|   |_|_|  \____||_| |_|___|
 
-**WiFi Scanner Pro** is an Android application built using **Jetpack Compose** and **Room**. It scans for nearby WiFi networks, records signal strength (RSSI), and associates the data with geolocation information. Users can select predefined locations, view scan results in both list and matrix formats, and review logs of past scans.
+```
 
----
+# WiFi Scanner Pro
 
-## 🚀 Features
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Kotlin](https://img.shields.io/badge/Kotlin-1.9.0-purple.svg)](https://kotlinlang.org/)
+[![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-1.3.0-green.svg)](https://developer.android.com/jetpack/compose)
+[![Room](https://img.shields.io/badge/Room-2.6.1-blue.svg)](https://developer.android.com/training/data-storage/room)
+[![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)](https://github.com/Sambhav-Gautam/Wifi/actions)
+
+WiFi Scanner Pro is a sophisticated Android application built with **Jetpack Compose** and **Room**. It enables users to scan nearby WiFi networks, capture signal strength (RSSI), and associate data with geolocation information. The app supports predefined location selection, displays scan results in list and matrix formats, and maintains a detailed log of past scans for analysis.
+
+## Features
 
 - **WiFi Scanning**  
-  Automatically scans for nearby WiFi networks and records:
-  - SSID
-  - BSSID
-  - RSSI (signal strength)
+  Automatically detects nearby WiFi networks and records:  
+  - SSID (Network Name)  
+  - BSSID (MAC Address)  
+  - RSSI (Signal Strength)  
 
-- **Location Integration**  
-  Associates each scan with:
-  - Latitude and longitude
-  - Geocoded address (using GPS or predefined coordinates)
+- **Geolocation Integration**  
+  Associates scan data with:  
+  - Latitude and longitude coordinates  
+  - Geocoded address derived from GPS or predefined coordinates  
 
 - **Location Selection**  
-  Choose between:
-  - **Location A:** Current device location  
-  - **Location B & C:** Offset by ~110 meters
+  Choose from predefined locations:  
+  - **Location A**: Current device location (via GPS)  
+  - **Location B & C**: Locations offset by approximately 110 meters from Location A  
 
 - **Data Persistence**  
-  Stores scan results and network details in a **Room** database with migration support.
+  Stores scan results and network details in a **Room** database with robust schema migration support.  
 
-- **UI Views**
-  - **List View:** Expandable cards with network details
-  - **Matrix View:** Grid showing RSSI values for each scan
-  - **Logs Dialog:** Review all past scan data
+- **User Interface Views**  
+  - **List View**: Expandable cards displaying detailed network information (SSID, RSSI, BSSID)  
+  - **Matrix View**: Grid-based visualization of RSSI values across multiple scans  
+  - **Logs Dialog**: Historical view of all past scan data  
 
-- **Auto-Scanning**  
-  Scans every 6 seconds (respects Android's scan throttling limitations).
+- **Automated Scanning**  
+  Performs scans every 6 seconds, adhering to Android's scan throttling restrictions.  
 
-- **Permissions Handling**  
-  Manages runtime permissions for location and WiFi access.
+- **Permission Management**  
+  Seamlessly handles runtime permissions for location and WiFi access to ensure compliance and functionality.
 
----
+## Demo Video
 
-## 📱 Requirements
+https://github.com/user-attachments/assets/0f0d15fd-347c-411a-9e3b-0ee85c1d3d00
 
-- Android API Level **21 (Lollipop)** or higher
-- Required Permissions:
-  - `ACCESS_FINE_LOCATION`: For GPS and scanning
-  - `ACCESS_WIFI_STATE`: For WiFi scan results
-- WiFi must be enabled on the device
 
----
+## Requirements
 
-## 📦 Dependencies
+- **Minimum Android API**: Level 21 (Lollipop) or higher  
+- **Permissions**:  
+  - `ACCESS_FINE_LOCATION`: Required for GPS and WiFi scanning  
+  - `ACCESS_WIFI_STATE`: Required to retrieve WiFi scan results  
+- **Hardware**: Device with WiFi and location services enabled  
 
-- [Jetpack Compose](https://developer.android.com/jetpack/compose) – UI Toolkit  
-- [Room](https://developer.android.com/training/data-storage/room) – Local database  
-- [Google Play Services Location](https://developers.google.com/location-context/fused-location-provider) – Location services  
-- [Kotlin Coroutines](https://kotlinlang.org/docs/coroutines-overview.html) – Async operations  
-- AndroidX Libraries – Core functionality and permissions
+## Dependencies
 
-### Add the following to `build.gradle`:
+The project relies on the following Android and third-party libraries:  
+- Jetpack Compose – Modern UI toolkit  
+- Room – Persistent local database  
+- Google Play Services Location – Geolocation services  
+- Kotlin Coroutines – Asynchronous operations  
+- AndroidX Libraries – Core functionality and permission handling  
+
+### Gradle Dependencies
+
+Add the following to your `app/build.gradle`:
 
 ```groovy
 dependencies {
@@ -70,87 +87,94 @@ dependencies {
 }
 ```
 
----
+## Setup Instructions
 
-## 🛠 Setup
-
-1. **Clone the Repository:**
-
+1. **Clone the Repository**  
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/Sambhav-Gautam/Wifi.git
    ```
 
-2. **Add Permissions in `AndroidManifest.xml`:**
-
+2. **Configure Permissions**  
+   Update `AndroidManifest.xml` to include:  
    ```xml
    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
    ```
 
-3. **Sync the Project:**  
-   Open in Android Studio and sync with Gradle.
+3. **Sync the Project**  
+   Open the project in Android Studio and sync with Gradle to resolve dependencies.
 
-4. **Run the App:**  
-   Deploy to a physical device or emulator with WiFi and location enabled.
+4. **Run the Application**  
+   Deploy to a physical Android device or emulator with WiFi and location services enabled.
 
----
+## Usage Guide
 
-## 📋 Usage
+1. **Launch the Application**  
+   The app initializes with **Location A** set to the device's current location. If location services are unavailable, it defaults to a predefined location (San Francisco).
 
-- **Launch the App:** Starts with Location A set to device location (fallback: San Francisco).
-- **Select Location:** Choose from A, B, or C using the dropdown.
-- **Start Scanning:** Tap the **Scan** button to begin auto-scanning (every 6 seconds).
-- **View Results:**
-  - **List View:** Expand for SSID, RSSI, and BSSID
-  - **Matrix View:** View signal strength across scans
-  - **Logs:** Open past scan history
-- **Refresh Location A:** Update to the device’s current location
-- **Stop Scanning:** Tap the **Scan** button again
+2. **Select a Location**  
+   Use the dropdown menu to choose between **Location A**, **Location B**, or **Location C**.
 
----
+3. **Initiate Scanning**  
+   Press the **Scan** button to start automatic scanning every 6 seconds.
 
-## 🗃 Database Schema
+4. **View Scan Results**  
+   - **List View**: Expand cards to view detailed network information (SSID, RSSI, BSSID).  
+   - **Matrix View**: Visualize RSSI values in a grid format.  
+   - **Logs Dialog**: Access a comprehensive history of all scans.
+
+5. **Refresh Location A**  
+   Update Location A to the device's current GPS coordinates.
+
+6. **Stop Scanning**  
+   Press the **Scan** button again to pause automatic scanning.
+
+## Database Schema
 
 ### `scan_results`
 
-| Field         | Description                    |
-|---------------|--------------------------------|
-| `id`          | Auto-generated primary key     |
-| `scanNumber`  | Sequential scan number         |
-| `location`    | Location name (e.g., "Location A") |
-| `totalAPs`    | Number of access points        |
-| `avgRSSI`     | Average signal strength        |
-| `minRSSI`     | Minimum signal strength        |
-| `maxRSSI`     | Maximum signal strength        |
-| `timestamp`   | Timestamp of scan              |
-| `latitude`    | Geolocation latitude           |
-| `longitude`   | Geolocation longitude          |
-| `address`     | Geocoded address               |
+| Field         | Type   | Description                          |
+|---------------|--------|--------------------------------------|
+| `id`          | Integer | Auto-generated primary key           |
+| `scanNumber`  | Integer | Sequential scan identifier           |
+| `location`    | String  | Location name (e.g., "Location A")   |
+| `totalAPs`    | Integer | Number of detected access points     |
+| `avgRSSI`     | Float   | Average signal strength              |
+| `minRSSI`     | Integer | Minimum signal strength              |
+| `maxRSSI`     | Integer | Maximum signal strength              |
+| `timestamp`   | Long    | Scan timestamp (epoch)               |
+| `latitude`    | Double  | Geolocation latitude                 |
+| `longitude`   | Double  | Geolocation longitude                |
+| `address`     | String  | Geocoded address                     |
 
 ### `wifi_networks`
 
-| Field     | Description                          |
-|-----------|--------------------------------------|
-| `id`      | Auto-generated primary key           |
-| `scanId`  | Foreign key (linked to scan_results) |
-| `ssid`    | WiFi network name                    |
-| `rssi`    | Signal strength                      |
-| `bssid`   | MAC address                          |
+| Field     | Type   | Description                          |
+|-----------|--------|--------------------------------------|
+| `id`      | Integer | Auto-generated primary key           |
+| `scanId`  | Integer | Foreign key (links to `scan_results`)|
+| `ssid`    | String  | WiFi network name                    |
+| `rssi`    | Integer | Signal strength                      |
+| `bssid`   | String  | MAC address                          |
 
----
+## Technical Notes
 
-## 📝 Notes
+- **Scan Throttling**: Android imposes a 4-6 second delay between WiFi scans to optimize battery usage.  
+- **Geocoder Fallback**: If geocoding fails, the address field defaults to "Unknown location".  
+- **Permission Handling**: Scanning is disabled until all required permissions are granted.  
+- **Database Migrations**: Supports Room migrations from version 1 to 2, adding the `wifi_networks` table and location fields.
 
-- **Scan Throttling:** Android enforces a ~4-6 second delay between scans.
-- **Geocoder Fallback:** If geocoding fails, address is marked as `"Unknown location"`.
-- **Permission Prompts:** Scanning is disabled unless all required permissions are granted.
-- **Migrations:** Supports Room migration from version 1 to 2, adding `wifi_networks` table and location fields.
+## Contributing
 
----
+Contributions are encouraged! To contribute:  
+1. Fork the repository.  
+2. Create a feature branch (`git checkout -b feature/your-feature`).  
+3. Commit your changes (`git commit -m 'Add your feature'`).  
+4. Push to the branch (`git push origin feature/your-feature`).  
+5. Open a Pull Request.  
 
-## 📄 License
+Ensure code adheres to the project's coding standards and includes relevant tests.
 
-This project is licensed under the **MIT License**.  
-See the [LICENSE](./LICENSE) file for details.
+## License
 
----
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
